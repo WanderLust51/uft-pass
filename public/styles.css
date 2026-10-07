@@ -1,0 +1,125 @@
+/* Estilos base nativos de iOS */
+body {
+    background-color: #f2f2f7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+        /* Tarjeta contenedora blanca estilo Apple */
+.ios-card {
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 400px;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+h2 {
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+    color: #000000;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+        /* Etiquetas pequeñas y grises típicas de configuración */
+label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #8e8e93;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    margin-left: 4px;
+}
+
+/* Inputs y Selects con bordes orgánicos curvos */
+.ios-input, .ios-select {
+    width: 100%;
+    background-color: #f2f2f7;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 15px;
+    color: #000000;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+/* Efecto de foco azul característico de Apple */
+.ios-input:focus, .ios-select:focus {
+    background-color: #ffffff;
+    border-color: #007aff;
+}
+
+.ios-select {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://w3.org' viewBox='0 0 20 20' fill='%238e8e93'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C</svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 18px;
+    padding-right: 40px;
+}
+
+/* Botón plano azul oficial (#007AFF) */
+.ios-button {
+    width: 100%;
+    background-color: #007aff;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    margin-top: 12px;
+}
+
+.ios-button:hover {
+    background-color: #0063cc;
+}
+
+.ios-button:active {
+    transform: scale(0.98);
+}
+
+[hidden] { display: none !important; }
+.ios-card { position: relative; }
+
+.estado { text-align: center; font-size: 15px; font-weight: 600; padding: 12px; border-radius: 12px; margin: 8px 0; background: #f2f2f7; color: #8e8e93; }
+.estado.ok  { background: #e8f8ed; color: #1e9e46; }
+.estado.mal { background: #fdecea; color: #d93025; }
+
+.qr { text-align: center; margin: 16px 0 0; }
+.qr img { width: 200px; max-width: 100%; border-radius: 12px; }
+
+.lista { list-style: none; margin: 0; padding: 0; background: #f2f2f7; border-radius: 12px; }
+.lista li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.lista li:last-child { border-bottom: none; }
+.lista li span:last-child { color: #8e8e93; }
+
+.ios-button.secundario { background: #f2f2f7; color: #007aff; margin-top: 16px; }
+.ios-button.secundario:hover { background: #e5e5ea; }
+.ios-button:disabled { opacity: .4; cursor: not-allowed; }
+
+.mini { border: none; background: #007aff; color: #fff; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; margin-left: 6px; }
+.mini:hover { background: #0063cc; }

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UFT Pass</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ios-card">
+    <h2 id="saludo">UFT Pass</h2>
+    <div class="estado" id="estado">Cargando…</div>
+
+    <div class="qr" id="qrBox" hidden>
+      <img id="qr" alt="Tu código QR de acceso">
+      <div id="qrNombre" style="margin-top:8px;font-size:16px;font-weight:700;color:#000"></div>
+      <div id="qrCedula" style="font-size:13px;color:#8e8e93"></div>
+    </div>
+
+    <label style="margin-top:24px">Mis cuotas</label>
+    <ul class="lista" id="lista"></ul>
+
+    <button class="ios-button secundario" id="btnSalir">Cerrar sesión</button>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function fila(ul, izq, der, color) {
+      const li = document.createElement('li');
+      const a = document.createElement('span'); a.textContent = izq;
+      const b = document.createElement('span'); b.textContent = der;
+      if (color) b.style.color = color;
+      li.append(a, b); ul.appendChild(li);
+    }
+
+    async function cargar() {
+      const r = await fetch('/estudiantes/me');
+      if (r.status === 401) return (location.href = '/');
+      const d = await r.json();
+
+      $('saludo').textContent = `Hola, ${d.nombre}`;
+      $('estado').textContent = d.solvente
+        ? `${d.nombre} · SOLVENTE · acceso permitido`
+        : `${d.nombre} · MOROSO · debes $${d.deuda} (${d.vencidas} cuota${d.vencidas > 1 ? 's' : ''} vencida${d.vencidas > 1 ? 's' : ''})`;
+      $('estado').className = 'estado ' + (d.solvente ? 'ok' : 'mal');
+
+      $('qrBox').hidden = !d.qr;
+      if (d.qr) {
+        $('qr').src = d.qr;
+        $('qrNombre').textContent = d.nombre;
+        $('qrCedula').textContent = 'C.I. ' + d.cedula;
+      }
+
+      $('lista').innerHTML = '';
+      if (!d.cuotas.length) fila($('lista'), 'Sin cuotas registradas', '');
+      d.cuotas.forEach(c => {
+        const estado = c.pagada ? 'Pagada' : c.vencida ? 'Vencida' : 'Pendiente';
+        const color = c.pagada ? '#1e9e46' : c.vencida ? '#ff3b30' : '#8e8e93';
+        fila($('lista'), `Cuota ${c.clave} · $${c.monto}${c.fecha ? ' · ' + c.fecha : ''}`, estado, color);
+      });
+    }
+
+    $('btnSalir').onclick = async () => {
+      await fetch('/estudiantes/logout', { method: 'POST' });
+      location.href = '/';
+    };
+    cargar();
+  </script>
+</body>
+</html>

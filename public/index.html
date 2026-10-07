@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UFT Pass</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="ios-card">
+        <h2>UFT Pass</h2>
+
+        <!-- Indicador de conexión estilo iOS -->
+        <div style="position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 6px;">
+            <span id="db-status-dot" style="width: 8px; height: 8px; background-color: #ff3b30; border-radius: 50%; display: inline-block; transition: background-color 0.3s ease;"></span>
+            <span id="db-status-text" style="font-size: 10px; color: #8e8e93; font-weight: 500; text-transform: uppercase;">Conectando</span>
+        </div>
+
+        <form id="formLogin">
+            <div class="form-group">
+                <label for="cedula">Cédula</label>
+                <input type="text" id="cedula" class="ios-input" inputmode="numeric"
+                       placeholder="Ingresa tu cédula" autocomplete="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" class="ios-input"
+                       placeholder="Ingresa tu contraseña" autocomplete="current-password" required>
+            </div>
+
+            <button type="submit" id="btnEnviar" class="ios-button" disabled>Entrar</button>
+        </form>
+
+        <p style="text-align:center; margin: 20px 0 0; font-size: 13px;">
+            <a href="/admin.html" style="color:#007aff; text-decoration:none;">Acceso del personal</a>
+        </p>
+    </div>
+
+    <script>
+        let dbConectada = false;
+        const dot = document.getElementById('db-status-dot');
+        const text = document.getElementById('db-status-text');
+        const btn = document.getElementById('btnEnviar');
+
+        function estado(online, mensaje) {
+            dbConectada = online;
+            dot.style.backgroundColor = online ? '#34c759' : '#ff3b30';
+            text.innerText = mensaje;
+            text.style.color = online ? '#34c759' : '#ff3b30';
+            btn.disabled = !online;
+        }
+
+        async function verificarConexionDB() {
+            try {
+                const r = await fetch('/estudiantes/status-db');
+                const d = await r.json();
+                d.conectado ? estado(true, 'Online') : estado(false, 'Error DB');
+            } catch {
+                estado(false, 'Offline');
+            }
+        }
+
+        document.getElementById('formLogin').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!dbConectada) {
+                alert('Acción bloqueada: el sistema se encuentra fuera de línea.');
+                return;
+            }
+
+            const cedula = document.getElementById('cedula').value;
+            const password = document.getElementById('password').value;
+
+            btn.disabled = true;
+            try {
+                const r = await fetch('/estudiantes/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cedula, password })
+                });
+                const res = await r.json();
+
+                if (res.estatus === 'ok') {
+                    window.location.href = res.redireccionarA;
+                } else {
+                    alert(res.mensaje || 'Error al iniciar sesión');
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error al intentar procesar el formulario.');
+                btn.disabled = false;
+            }
+        });
+
+        verificarConexionDB();
+    </script>
+
+</body>
+</html>

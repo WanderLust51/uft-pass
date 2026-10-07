@@ -1,0 +1,17 @@
+# Dependencias (se reinstalan con npm install)
+node_modules/
+
+# Secretos: nunca subir
+.env
+.env.*
+!.env.example
+
+# Archivos de prueba con datos personales
+cambiar-pruebas.js
+qr-prueba.png
+
+# Sistema y editor
+.DS_Store
+*.log
+.vscode/
+.idea/

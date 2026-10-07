@@ -1,0 +1,21 @@
+{
+  "name": "uft-pass",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "airtable": "^0.12.2",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "framework7": "^9.1.3",
+    "qrcode": "^1.5.4",
+    "tailwindcss": "^4.3.3"
+  }
+}
