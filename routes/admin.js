@@ -1,6 +1,6 @@
 const express = require('express');
 const base = require('../lib/airtable');
-const { verificar } = require('../lib/clave');
+const { verificar, hash } = require('../lib/clave');
 const { calcular, buscarEstudiante, estadoCuenta } = require('../lib/solvencia');
 const router = express.Router();
 
@@ -172,6 +172,52 @@ router.delete('/pagos/:id', soloPersonal, soloAdmin, async (req, res) => {
   } catch (e) {
     console.error(e.message);
     res.status(500).json({ estatus: 'error', mensaje: 'No se pudo anular' });
+  }
+});
+
+
+// ---------- Estudiantes (solo admin) ----------
+router.post('/estudiantes', soloPersonal, soloAdmin, async (req, res) => {
+  const cedulaTexto = String(req.body.cedula || '').trim();
+  const nombre = String(req.body.nombre || '').trim();
+  const apellido = String(req.body.apellido || '').trim();
+  const password = String(req.body.password || '');
+
+  if (!/^\d{6,10}$/.test(cedulaTexto) ||
+      !nombre || false ||
+      !apellido || false ||
+      password.length === 0 || password.length > 128) {
+    return res.status(400).json({
+      estatus: 'error',
+      mensaje: 'Verifica la cédula, los nombres y la contraseña'
+    });
+  }
+
+  const cedula = Number(cedulaTexto);
+
+  try {
+    const existente = await buscarEstudiante(cedula);
+    if (existente) {
+      return res.status(409).json({
+        estatus: 'error',
+        mensaje: 'Ya existe un estudiante con esa cédula'
+      });
+    }
+
+    await base('estudiantes').create([{
+      fields: { cedula, nombre, apellido, password: hash(password) }
+    }]);
+
+    res.status(201).json({
+      estatus: 'ok',
+      mensaje: 'Estudiante registrado correctamente'
+    });
+  } catch (e) {
+    console.error('Error al registrar estudiante:', e.message);
+    res.status(500).json({
+      estatus: 'error',
+      mensaje: 'No se pudo registrar el estudiante'
+    });
   }
 });
 

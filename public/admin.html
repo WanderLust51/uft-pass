@@ -29,6 +29,33 @@
   <div class="ios-card" id="vistaPanel" hidden>
     <h2 id="titulo">Control de acceso</h2>
 
+    <details id="seccionNuevoEstudiante" hidden>
+  <summary style="cursor:pointer; font-weight:600; margin-bottom:12px;">Registrar estudiante</summary>
+          <form id="formEstudiante">
+        <div class="form-group">
+          <label for="nuevaCedula">Cédula</label>
+          <input id="nuevaCedula" class="ios-input" inputmode="numeric"
+                 pattern="[0-9]{6,10}" minlength="6" maxlength="10"
+                 placeholder="Cédula del estudiante" required>
+        </div>
+        <div class="form-group">
+          <label for="nuevoNombre">Nombre</label>
+          <input id="nuevoNombre" class="ios-input"  required>
+        </div>
+        <div class="form-group">
+          <label for="nuevoApellido">Apellido</label>
+          <input id="nuevoApellido" class="ios-input"  required>
+        </div>
+        <div class="form-group">
+          <label for="nuevaPassword">Contraseña inicial</label>
+          <input id="nuevaPassword" class="ios-input" type="password"
+                  autocomplete="new-password" required>
+        </div>
+        <button class="ios-button" type="submit" style="margin-bottom:24px;">Registrar estudiante</button>
+      </form>
+      <div id="mensajeRegistro" class="estado" role="status" hidden></div>
+    </details>
+
     <form id="formVerificar">
       <div class="form-group">
         <label for="ced">Verificar cédula</label>
@@ -82,6 +109,7 @@
       if (!s.ok) { $('vistaPanel').hidden = true; $('vistaLogin').hidden = false; return; }
       esAdmin = !!s.data.admin;
       $('titulo').textContent = esAdmin ? 'Control de acceso · Admin' : 'Control de acceso';
+      $('seccionNuevoEstudiante').hidden = !esAdmin;
       $('vistaLogin').hidden = true; $('vistaPanel').hidden = false;
 
       const d = (await api('/admin/morosos')).data;
@@ -231,6 +259,42 @@
       e.preventDefault();
       const r = await api('/admin/login', 'POST', { id: $('idp').value, password: $('pwd').value });
       if (r.ok) { $('pwd').value = ''; cargar(); } else alert(r.data.mensaje || 'Error');
+    });
+
+    $('formEstudiante').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const boton = $('formEstudiante').querySelector('button[type="submit"]');
+      const mensaje = $('mensajeRegistro');
+      boton.disabled = true;
+      mensaje.hidden = true;
+
+      try {
+        const r = await api('/admin/estudiantes', 'POST', {
+          cedula: $('nuevaCedula').value.trim(),
+          nombre: $('nuevoNombre').value.trim(),
+          apellido: $('nuevoApellido').value.trim(),
+          password: $('nuevaPassword').value
+        });
+
+        mensaje.hidden = false;
+        mensaje.textContent = r.data.mensaje || (r.ok
+          ? 'Estudiante registrado correctamente'
+          : 'No se pudo registrar el estudiante');
+        mensaje.className = 'estado ' + (r.ok ? 'ok' : 'mal');
+
+        if (r.ok) {
+          $('formEstudiante').reset();
+          $('nuevaCedula').focus();
+          await cargar();
+        }
+      } catch {
+        mensaje.hidden = false;
+        mensaje.textContent = 'Error de conexión. Inténtalo de nuevo.';
+        mensaje.className = 'estado mal';
+      } finally {
+        boton.disabled = false;
+      }
     });
 
     $('formVerificar').addEventListener('submit', (e) => {

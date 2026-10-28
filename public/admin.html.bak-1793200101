@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UFT Pass · Personal</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    #scanBox video { width: 100%; border-radius: 12px; background: #000; margin-top: 12px; }
+    #resultado { white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <div class="ios-card" id="vistaLogin" hidden>
+    <h2>Personal</h2>
+    <form id="formAdmin">
+      <div class="form-group">
+        <label for="idp">ID de personal</label>
+        <input type="text" id="idp" class="ios-input" placeholder="PER-001" required>
+      </div>
+      <div class="form-group">
+        <label for="pwd">Contraseña</label>
+        <input type="password" id="pwd" class="ios-input" required>
+      </div>
+      <button class="ios-button" type="submit">Entrar</button>
+    </form>
+  </div>
+
+  <div class="ios-card" id="vistaPanel" hidden>
+    <h2 id="titulo">Control de acceso</h2>
+
+    <section id="seccionNuevoEstudiante" hidden>
+      <h3>Registrar estudiante</h3>
+      <form id="formEstudiante">
+        <div class="form-group">
+          <label for="nuevaCedula">Cédula</label>
+          <input id="nuevaCedula" class="ios-input" inputmode="numeric"
+                 pattern="[0-9]{6,10}" minlength="6" maxlength="10"
+                 placeholder="Cédula del estudiante" required>
+        </div>
+        <div class="form-group">
+          <label for="nuevoNombre">Nombre</label>
+          <input id="nuevoNombre" class="ios-input" maxlength="100" required>
+        </div>
+        <div class="form-group">
+          <label for="nuevoApellido">Apellido</label>
+          <input id="nuevoApellido" class="ios-input" maxlength="100" required>
+        </div>
+        <div class="form-group">
+          <label for="nuevaPassword">Contraseña inicial</label>
+          <input id="nuevaPassword" class="ios-input" type="password"
+                 minlength="8" maxlength="128" autocomplete="new-password" required>
+        </div>
+        <button class="ios-button" type="submit">Registrar estudiante</button>
+      </form>
+      <div id="mensajeRegistro" class="estado" role="status" hidden></div>
+    </section>
+
+    <form id="formVerificar">
+      <div class="form-group">
+        <label for="ced">Verificar cédula</label>
+        <input type="text" id="ced" class="ios-input" inputmode="numeric" placeholder="Cédula del estudiante" required>
+      </div>
+      <button class="ios-button" type="submit">Verificar</button>
+    </form>
+
+    <button class="ios-button secundario" id="btnScan" type="button">Escanear QR</button>
+    <div id="scanBox" hidden><video id="video" playsinline muted></video></div>
+
+    <div class="estado" id="resultado" hidden></div>
+
+    <div id="seccionPagos" hidden>
+      <label style="margin-top:24px">Cuotas del estudiante</label>
+      <ul class="lista" id="listaPagos"></ul>
+    </div>
+
+    <label style="margin-top:24px">Resumen: <span id="resumen"></span></label>
+    <ul class="lista" id="morosos"></ul>
+
+    <button class="ios-button secundario" id="btnRefrescar">Actualizar</button>
+    <button class="ios-button secundario" id="btnSalir">Cerrar sesión</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const fmt = (f) => f ? f.split('-').reverse().join('/') : '';
+    let esAdmin = false;
+    let cedulaActual = null;
+
+    async function api(url, method = 'GET', body) {
+      const r = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      return { ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) };
+    }
+
+    function fila(ul, izq, der) {
+      const li = document.createElement('li');
+      const a = document.createElement('span'); a.textContent = izq;
+      const b = document.createElement('span'); b.textContent = der;
+      li.append(a, b); ul.appendChild(li);
+    }
+
+    async function cargar() {
+      const s = await api('/admin/sesion');
+      if (!s.ok) { $('vistaPanel').hidden = true; $('vistaLogin').hidden = false; return; }
+      esAdmin = !!s.data.admin;
+      $('titulo').textContent = esAdmin ? 'Control de acceso · Admin' : 'Control de acceso';
+      $('seccionNuevoEstudiante').hidden = !esAdmin;
+      $('vistaLogin').hidden = true; $('vistaPanel').hidden = false;
+
+      const d = (await api('/admin/morosos')).data;
+      $('resumen').textContent = `${d.solventes} solventes · ${d.morosos.length} morosos`;
+      $('morosos').innerHTML = '';
+      if (!d.morosos.length) fila($('morosos'), 'Nadie debe nada', '');
+      d.morosos.forEach(m => fila($('morosos'), `${m.nombre} (${m.cedula})`, `$${m.deuda}`));
+    }
+
+    async function cargarPagos(cedula) {
+      cedulaActual = cedula;
+      $('seccionPagos').hidden = !esAdmin;
+      if (!esAdmin) return;
+
+      const { ok, data } = await api('/admin/pagos/' + cedula);
+      const ul = $('listaPagos'); ul.innerHTML = '';
+      if (!ok) { fila(ul, data.mensaje || 'Error', ''); return; }
+      if (!data.cuotas.length) fila(ul, 'Sin cuotas registradas', '');
+
+      data.cuotas.forEach(c => {
+        const li = document.createElement('li');
+        const txt = document.createElement('span');
+        const estado = c.pagada ? `pagada ${c.fechaPago || ''}` : c.vencida ? 'vencida' : 'pendiente';
+        txt.textContent = `Cuota ${c.clave} · $${c.monto} · ${estado}`;
+
+        const acciones = document.createElement('span');
+        const btn = (t, fn) => {
+          const b = document.createElement('button');
+          b.textContent = t; b.className = 'mini'; b.onclick = fn;
+          acciones.appendChild(b);
+        };
+
+        if (!c.pagada) {
+          btn('Registrar pago', () => accion(api('/admin/pagos', 'POST', { cedula, clave: c.clave })));
+        } else {
+          btn('Fecha', () => {
+            const f = prompt('Nueva fecha (AAAA-MM-DD):', c.fechaPago || '');
+            if (f) accion(api('/admin/pagos/' + c.pagoId, 'PATCH', { fecha: f }));
+          });
+          btn('Anular', () => {
+            if (confirm(`¿Anular el pago de la cuota ${c.clave}?`))
+              accion(api('/admin/pagos/' + c.pagoId, 'DELETE'));
+          });
+        }
+        li.append(txt, acciones); ul.appendChild(li);
+      });
+    }
+
+    async function accion(promesa) {
+      const r = await promesa;
+      if (!r.ok) alert(r.data.mensaje || 'Error');
+      await cargar();
+      if (cedulaActual) await verificar(cedulaActual);
+    }
+
+    async function verificar(cedula) {
+      const { ok, data } = await api('/admin/verificar/' + encodeURIComponent(cedula));
+      const box = $('resultado'); box.hidden = false;
+      if (!ok) {
+        box.textContent = data.mensaje || 'Error'; box.className = 'estado mal';
+        $('seccionPagos').hidden = true; return;
+      }
+
+      const a = data.actual;
+      const linea = a
+        ? `Cuota actual: nro ${a.clave} (${fmt(a.fecha)}) · ${a.pagada ? 'pagada' : a.vencida ? 'vencida' : 'pendiente'}`
+        : 'Sin cuotas registradas';
+
+      const detalle = data.solvente
+        ? `✔ SOLVENTE${a ? ' con la cuota nro ' + a.clave : ''} · puede pasar\n${linea}`
+        : `✖ MOROSO · NO puede pasar (debe $${data.deuda})\n${linea}\nCuotas vencidas: ${data.debe.map(d => d.clave).join(', ')}`;
+      box.textContent = '';
+      const nom = document.createElement('div');
+      nom.textContent = data.nombre;
+      nom.style.cssText = 'font-size:22px;font-weight:700;color:#000';
+      const ci = document.createElement('div');
+      ci.textContent = 'C.I. ' + data.cedula;
+      ci.style.cssText = 'font-size:13px;font-weight:500;margin-bottom:8px;color:#3c3c43';
+      box.append(nom, ci, document.createTextNode(detalle));
+      box.className = 'estado ' + (data.solvente ? 'ok' : 'mal');
+      cargarPagos(data.cedula);
+    }
+
+    // ---------- Escáner QR ----------
+    let stream = null, scanning = false;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    async function iniciarScan() {
+      if (typeof jsQR === 'undefined') { alert('No se cargó el lector de QR (revisa tu conexión a internet).'); return; }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('La cámara solo funciona en https o en localhost.'); return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      } catch {
+        alert('No se pudo acceder a la cámara. Revisa el permiso del navegador.'); return;
+      }
+      const v = $('video');
+      v.srcObject = stream;
+      await v.play();
+      $('scanBox').hidden = false;
+      $('btnScan').textContent = 'Cancelar escaneo';
+      scanning = true;
+      requestAnimationFrame(tick);
+    }
+
+    function detenerScan() {
+      scanning = false;
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = null;
+      $('video').srcObject = null;
+      $('scanBox').hidden = true;
+      $('btnScan').textContent = 'Escanear QR';
+    }
+
+    function tick() {
+      if (!scanning) return;
+      const v = $('video');
+      if (v.readyState === v.HAVE_ENOUGH_DATA) {
+        canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+        ctx.drawImage(v, 0, 0);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (code && code.data) { leido(code.data); return; }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function leido(texto) {
+      detenerScan();
+      const m = String(texto).match(/\d{6,10}/);
+      const box = $('resultado');
+      if (!m) {
+        box.hidden = false; box.className = 'estado mal';
+        box.textContent = 'QR no válido. Contenido leído: ' + String(texto).slice(0, 60);
+        return;
+      }
+      $('ced').value = m[0];
+      verificar(m[0]);
+    }
+
+    $('btnScan').onclick = () => (scanning ? detenerScan() : iniciarScan());
+
+    // ---------- Eventos ----------
+    $('formAdmin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const r = await api('/admin/login', 'POST', { id: $('idp').value, password: $('pwd').value });
+      if (r.ok) { $('pwd').value = ''; cargar(); } else alert(r.data.mensaje || 'Error');
+    });
+
+    $('formEstudiante').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const boton = $('formEstudiante').querySelector('button[type="submit"]');
+      const mensaje = $('mensajeRegistro');
+      boton.disabled = true;
+      mensaje.hidden = true;
+
+      try {
+        const r = await api('/admin/estudiantes', 'POST', {
+          cedula: $('nuevaCedula').value.trim(),
+          nombre: $('nuevoNombre').value.trim(),
+          apellido: $('nuevoApellido').value.trim(),
+          password: $('nuevaPassword').value
+        });
+
+        mensaje.hidden = false;
+        mensaje.textContent = r.data.mensaje || (r.ok
+          ? 'Estudiante registrado correctamente'
+          : 'No se pudo registrar el estudiante');
+        mensaje.className = 'estado ' + (r.ok ? 'ok' : 'mal');
+
+        if (r.ok) {
+          $('formEstudiante').reset();
+          $('nuevaCedula').focus();
+          await cargar();
+        }
+      } catch {
+        mensaje.hidden = false;
+        mensaje.textContent = 'Error de conexión. Inténtalo de nuevo.';
+        mensaje.className = 'estado mal';
+      } finally {
+        boton.disabled = false;
+      }
+    });
+
+    $('formVerificar').addEventListener('submit', (e) => {
+      e.preventDefault();
+      verificar($('ced').value);
+    });
+
+    $('btnRefrescar').onclick = cargar;
+    $('btnSalir').onclick = async () => { detenerScan(); await api('/admin/logout', 'POST'); location.reload(); };
+    cargar();
+  </script>
+</body>
+</html>
