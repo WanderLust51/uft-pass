@@ -48,7 +48,7 @@ router.post('/login', async (req, res) => {
 router.get('/sesion', soloPersonal, (req, res) =>
   res.json({ estatus: 'ok', ...req.session.personal }));
 
-router.post('/logout', (req, res) => req.session.destroy(() => res.json({ estatus: 'ok' })));
+router.post('/logout', (req, res) => { req.session = null; res.json({ estatus: 'ok' }); });
 
 // ---------- Consulta (todo el personal) ----------
 router.get('/verificar/:cedula', soloPersonal, async (req, res) => {

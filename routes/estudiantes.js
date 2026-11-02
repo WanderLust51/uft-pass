@@ -43,7 +43,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/inicio', (req, res) => {
   if (!req.session.estudiante) return res.redirect('/');
-  res.sendFile(path.join(__dirname, '../public/home.html'));
+  res.redirect('/home.html');
 });
 
 router.get('/me', soloAlumno, async (req, res) => {
@@ -58,6 +58,6 @@ router.get('/me', soloAlumno, async (req, res) => {
   }
 });
 
-router.post('/logout', (req, res) => req.session.destroy(() => res.json({ estatus: 'ok' })));
+router.post('/logout', (req, res) => { req.session = null; res.json({ estatus: 'ok' }); });
 
 module.exports = router;
