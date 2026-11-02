@@ -123,3 +123,11 @@ label {
 
 .mini { border: none; background: #007aff; color: #fff; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; margin-left: 6px; }
 .mini:hover { background: #0063cc; }
+/* Identidad institucional */
+.marca { text-align: center; margin: -4px 0 18px; }
+.marca-mono { width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; background: #007aff; color: #fff; font-weight: 700; font-size: 16px; letter-spacing: .5px; }
+.marca-img { width: 56px; height: 56px; object-fit: contain; display: block; margin: 0 auto 8px; }
+.marca-uni { font-size: 14px; font-weight: 700; color: #000; letter-spacing: -.2px; }
+.marca-sede { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+.ayuda { text-align: center; font-size: 12px; color: #8e8e93; margin: 18px 0 0; }
+.pie { text-align: center; font-size: 11px; color: #8e8e93; margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,.06); line-height: 1.5; }

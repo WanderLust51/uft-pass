@@ -140,6 +140,19 @@ router.post('/pagos', soloPersonal, soloAdmin, async (req, res) => {
     if (dup.length)
       return res.status(409).json({ estatus: 'error', mensaje: 'Esa cuota ya está pagada' });
 
+    // Regla: solo se puede pagar una cuota si todas las anteriores ya están pagadas
+    const [todas, pagadas] = await Promise.all([
+      base('cuotas').select().all(),
+      base('cuotas-pagadas').select({ filterByFormula: `{cedula} = ${cedula}` }).all()
+    ]);
+    const yaPagadas = new Set(pagadas.map(p => p.fields.clave));
+    const faltante = todas
+      .map(c => c.fields.clave)
+      .filter(k => k != null && k < clave && !yaPagadas.has(k))
+      .sort((a, b) => a - b)[0];
+    if (faltante !== undefined)
+      return res.status(409).json({ estatus: 'error', mensaje: `Primero debes registrar el pago de la cuota ${faltante}.` });
+
     const [nuevo] = await base('cuotas-pagadas').create([{ fields: { cedula, clave, fecha } }]);
     res.json({ estatus: 'ok', id: nuevo.id });
   } catch (e) {
