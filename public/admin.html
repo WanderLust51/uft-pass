@@ -6,8 +6,38 @@
   <title>UFT Pass · Personal</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
+    #vistaPanel { max-width: 480px; }
     #scanBox video { width: 100%; border-radius: 12px; background: #000; margin-top: 12px; }
     #resultado { white-space: pre-line; }
+
+    .seccion-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 28px 0 8px; flex-wrap: wrap; }
+    .seccion-titulo label { margin: 0; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #f2f2f7; color: #8e8e93; white-space: nowrap; }
+    .chip.ok { background: #e8f8ed; color: #1e9e46; }
+    .chip.mal { background: #fdecea; color: #d93025; }
+
+    .cuota { background: #f2f2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; border-left: 4px solid #c7c7cc; }
+    .cuota.pagada { border-left-color: #34c759; }
+    .cuota.vencida { border-left-color: #ff3b30; }
+    .cuota-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .cuota-titulo { font-size: 14px; font-weight: 600; color: #000; }
+    .cuota-sub { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+    .acciones { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+    .btn-sm { border: none; border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; background: #007aff; color: #fff; min-height: 36px; }
+    .btn-sm.ghost { background: #fff; color: #007aff; }
+    .btn-sm.peligro { background: #fff; color: #ff3b30; }
+    .btn-sm:active { transform: scale(.97); }
+    .fecha-input { width: auto; flex: 1; min-width: 140px; padding: 8px 12px; }
+
+    .lista-scroll { max-height: 300px; overflow-y: auto; border-radius: 12px; background: #f2f2f7; }
+    .moroso { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: transparent; border: none; border-bottom: 1px solid rgba(0,0,0,.06); cursor: pointer; text-align: left; font: inherit; }
+    .moroso:last-child { border-bottom: none; }
+    .moroso:hover { background: #e9e9ee; }
+    .moroso.activo { background: #dbeafe; }
+    .moroso .nom { font-size: 14px; font-weight: 600; color: #000; }
+    .moroso .ci { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+    .vacio { padding: 14px; font-size: 13px; color: #8e8e93; text-align: center; }
   </style>
 </head>
 <body>
@@ -29,33 +59,6 @@
   <div class="ios-card" id="vistaPanel" hidden>
     <h2 id="titulo">Control de acceso</h2>
 
-    <details id="seccionNuevoEstudiante" hidden>
-  <summary style="cursor:pointer; font-weight:600; margin-bottom:12px;">Registrar estudiante</summary>
-          <form id="formEstudiante">
-        <div class="form-group">
-          <label for="nuevaCedula">Cédula</label>
-          <input id="nuevaCedula" class="ios-input" inputmode="numeric"
-                 pattern="[0-9]{6,10}" minlength="6" maxlength="10"
-                 placeholder="Cédula del estudiante" required>
-        </div>
-        <div class="form-group">
-          <label for="nuevoNombre">Nombre</label>
-          <input id="nuevoNombre" class="ios-input"  required>
-        </div>
-        <div class="form-group">
-          <label for="nuevoApellido">Apellido</label>
-          <input id="nuevoApellido" class="ios-input"  required>
-        </div>
-        <div class="form-group">
-          <label for="nuevaPassword">Contraseña inicial</label>
-          <input id="nuevaPassword" class="ios-input" type="password"
-                  autocomplete="new-password" required>
-        </div>
-        <button class="ios-button" type="submit" style="margin-bottom:24px;">Registrar estudiante</button>
-      </form>
-      <div id="mensajeRegistro" class="estado" role="status" hidden></div>
-    </details>
-
     <form id="formVerificar">
       <div class="form-group">
         <label for="ced">Verificar cédula</label>
@@ -70,12 +73,16 @@
     <div class="estado" id="resultado" hidden></div>
 
     <div id="seccionPagos" hidden>
-      <label style="margin-top:24px">Cuotas del estudiante</label>
-      <ul class="lista" id="listaPagos"></ul>
+      <div class="seccion-titulo"><label>Cuotas del estudiante</label></div>
+      <div id="listaPagos"></div>
     </div>
 
-    <label style="margin-top:24px">Resumen: <span id="resumen"></span></label>
-    <ul class="lista" id="morosos"></ul>
+    <div class="seccion-titulo">
+      <label>Morosos · toca uno para verificarlo</label>
+      <div class="chips"><span class="chip ok" id="nSolv"></span><span class="chip mal" id="nMor"></span></div>
+    </div>
+    <input type="text" id="filtro" class="ios-input" placeholder="Buscar por nombre o cédula" style="margin-bottom:8px">
+    <div class="lista-scroll" id="morosos"></div>
 
     <button class="ios-button secundario" id="btnRefrescar">Actualizar</button>
     <button class="ios-button secundario" id="btnSalir">Cerrar sesión</button>
@@ -85,8 +92,13 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const fmt = (f) => f ? f.split('-').reverse().join('/') : '';
-    let esAdmin = false;
-    let cedulaActual = null;
+    const el = (tag, cls, txt) => {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (txt !== undefined) e.textContent = txt;
+      return e;
+    };
+    let esAdmin = false, cedulaActual = null, listaMorosos = [];
 
     async function api(url, method = 'GET', body) {
       const r = await fetch(url, {
@@ -97,11 +109,38 @@
       return { ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) };
     }
 
-    function fila(ul, izq, der) {
-      const li = document.createElement('li');
-      const a = document.createElement('span'); a.textContent = izq;
-      const b = document.createElement('span'); b.textContent = der;
-      li.append(a, b); ul.appendChild(li);
+    // ---------- Lista de morosos (clicable) ----------
+    function marcarActivo() {
+      document.querySelectorAll('.moroso').forEach(b =>
+        b.classList.toggle('activo', b.dataset.cedula === String(cedulaActual)));
+    }
+
+    function pintarMorosos() {
+      const q = $('filtro').value.trim().toLowerCase();
+      const cont = $('morosos'); cont.innerHTML = '';
+      const lista = listaMorosos.filter(m => !q || `${m.nombre} ${m.cedula}`.toLowerCase().includes(q));
+      if (!lista.length) {
+        cont.appendChild(el('div', 'vacio', listaMorosos.length ? 'Sin coincidencias' : 'Nadie debe nada'));
+        return;
+      }
+      lista.forEach(m => {
+        const b = el('button', 'moroso');
+        b.type = 'button';
+        b.dataset.cedula = String(m.cedula);
+        const izq = el('div');
+        izq.append(
+          el('div', 'nom', m.nombre),
+          el('div', 'ci', `C.I. ${m.cedula} · ${m.vencidas} vencida${m.vencidas > 1 ? 's' : ''}`)
+        );
+        b.append(izq, el('span', 'chip mal', `$${m.deuda}`));
+        b.onclick = async () => {
+          $('ced').value = m.cedula;
+          await verificar(m.cedula);
+          $('resultado').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+        cont.appendChild(b);
+      });
+      marcarActivo();
     }
 
     async function cargar() {
@@ -109,53 +148,66 @@
       if (!s.ok) { $('vistaPanel').hidden = true; $('vistaLogin').hidden = false; return; }
       esAdmin = !!s.data.admin;
       $('titulo').textContent = esAdmin ? 'Control de acceso · Admin' : 'Control de acceso';
-      $('seccionNuevoEstudiante').hidden = !esAdmin;
       $('vistaLogin').hidden = true; $('vistaPanel').hidden = false;
 
       const d = (await api('/admin/morosos')).data;
-      $('resumen').textContent = `${d.solventes} solventes · ${d.morosos.length} morosos`;
-      $('morosos').innerHTML = '';
-      if (!d.morosos.length) fila($('morosos'), 'Nadie debe nada', '');
-      d.morosos.forEach(m => fila($('morosos'), `${m.nombre} (${m.cedula})`, `$${m.deuda}`));
+      $('nSolv').textContent = `${d.solventes} solventes`;
+      $('nMor').textContent = `${d.morosos.length} morosos`;
+      listaMorosos = d.morosos.sort((a, b) => b.deuda - a.deuda);
+      pintarMorosos();
+    }
+
+    // ---------- Cuotas del estudiante (solo admin) ----------
+    function editarFecha(acc, c) {
+      acc.innerHTML = '';
+      const inp = el('input', 'ios-input fecha-input');
+      inp.type = 'date'; inp.value = c.fechaPago || '';
+      const ok = el('button', 'btn-sm', 'Guardar'); ok.type = 'button';
+      const no = el('button', 'btn-sm ghost', 'Cancelar'); no.type = 'button';
+      ok.onclick = () => { if (inp.value) accion(api('/admin/pagos/' + c.pagoId, 'PATCH', { fecha: inp.value })); };
+      no.onclick = () => cargarPagos(cedulaActual);
+      acc.append(inp, no, ok);
+    }
+
+    function tarjetaCuota(c, cedula) {
+      const estado = c.pagada ? 'pagada' : c.vencida ? 'vencida' : 'pendiente';
+      const card = el('div', 'cuota ' + estado);
+
+      const top = el('div', 'cuota-top');
+      const info = el('div');
+      info.append(
+        el('div', 'cuota-titulo', `Cuota ${c.clave} · $${c.monto}`),
+        el('div', 'cuota-sub', c.pagada ? `Pagada el ${fmt(c.fechaPago)}` : (c.fecha ? `Vence el ${fmt(c.fecha)}` : 'Sin fecha'))
+      );
+      top.append(info, el('span', 'chip ' + (c.pagada ? 'ok' : c.vencida ? 'mal' : ''),
+        c.pagada ? 'Pagada' : c.vencida ? 'Vencida' : 'Pendiente'));
+
+      const acc = el('div', 'acciones');
+      const btn = (txt, cls, fn) => { const b = el('button', 'btn-sm ' + cls, txt); b.type = 'button'; b.onclick = fn; return b; };
+      if (!c.pagada) {
+        acc.append(btn('Registrar pago', '', () => accion(api('/admin/pagos', 'POST', { cedula, clave: c.clave }))));
+      } else {
+        acc.append(
+          btn('Cambiar fecha', 'ghost', () => editarFecha(acc, c)),
+          btn('Anular pago', 'peligro', () => {
+            if (confirm(`¿Anular el pago de la cuota ${c.clave}?`))
+              accion(api('/admin/pagos/' + c.pagoId, 'DELETE'));
+          })
+        );
+      }
+      card.append(top, acc);
+      return card;
     }
 
     async function cargarPagos(cedula) {
       cedulaActual = cedula;
       $('seccionPagos').hidden = !esAdmin;
       if (!esAdmin) return;
-
       const { ok, data } = await api('/admin/pagos/' + cedula);
-      const ul = $('listaPagos'); ul.innerHTML = '';
-      if (!ok) { fila(ul, data.mensaje || 'Error', ''); return; }
-      if (!data.cuotas.length) fila(ul, 'Sin cuotas registradas', '');
-
-      data.cuotas.forEach(c => {
-        const li = document.createElement('li');
-        const txt = document.createElement('span');
-        const estado = c.pagada ? `pagada ${c.fechaPago || ''}` : c.vencida ? 'vencida' : 'pendiente';
-        txt.textContent = `Cuota ${c.clave} · $${c.monto} · ${estado}`;
-
-        const acciones = document.createElement('span');
-        const btn = (t, fn) => {
-          const b = document.createElement('button');
-          b.textContent = t; b.className = 'mini'; b.onclick = fn;
-          acciones.appendChild(b);
-        };
-
-        if (!c.pagada) {
-          btn('Registrar pago', () => accion(api('/admin/pagos', 'POST', { cedula, clave: c.clave })));
-        } else {
-          btn('Fecha', () => {
-            const f = prompt('Nueva fecha (AAAA-MM-DD):', c.fechaPago || '');
-            if (f) accion(api('/admin/pagos/' + c.pagoId, 'PATCH', { fecha: f }));
-          });
-          btn('Anular', () => {
-            if (confirm(`¿Anular el pago de la cuota ${c.clave}?`))
-              accion(api('/admin/pagos/' + c.pagoId, 'DELETE'));
-          });
-        }
-        li.append(txt, acciones); ul.appendChild(li);
-      });
+      const cont = $('listaPagos'); cont.innerHTML = '';
+      if (!ok) { cont.appendChild(el('div', 'vacio', data.mensaje || 'Error')); return; }
+      if (!data.cuotas.length) cont.appendChild(el('div', 'vacio', 'Sin cuotas registradas'));
+      data.cuotas.forEach(c => cont.appendChild(tarjetaCuota(c, cedula)));
     }
 
     async function accion(promesa) {
@@ -165,6 +217,7 @@
       if (cedulaActual) await verificar(cedulaActual);
     }
 
+    // ---------- Verificación ----------
     async function verificar(cedula) {
       const { ok, data } = await api('/admin/verificar/' + encodeURIComponent(cedula));
       const box = $('resultado'); box.hidden = false;
@@ -172,21 +225,20 @@
         box.textContent = data.mensaje || 'Error'; box.className = 'estado mal';
         $('seccionPagos').hidden = true; return;
       }
+      cedulaActual = data.cedula; marcarActivo();
 
       const a = data.actual;
       const linea = a
         ? `Cuota actual: nro ${a.clave} (${fmt(a.fecha)}) · ${a.pagada ? 'pagada' : a.vencida ? 'vencida' : 'pendiente'}`
         : 'Sin cuotas registradas';
-
       const detalle = data.solvente
         ? `✔ SOLVENTE${a ? ' con la cuota nro ' + a.clave : ''} · puede pasar\n${linea}`
         : `✖ MOROSO · NO puede pasar (debe $${data.deuda})\n${linea}\nCuotas vencidas: ${data.debe.map(d => d.clave).join(', ')}`;
+
       box.textContent = '';
-      const nom = document.createElement('div');
-      nom.textContent = data.nombre;
+      const nom = el('div', '', data.nombre);
       nom.style.cssText = 'font-size:22px;font-weight:700;color:#000';
-      const ci = document.createElement('div');
-      ci.textContent = 'C.I. ' + data.cedula;
+      const ci = el('div', '', 'C.I. ' + data.cedula);
       ci.style.cssText = 'font-size:13px;font-weight:500;margin-bottom:8px;color:#3c3c43';
       box.append(nom, ci, document.createTextNode(detalle));
       box.className = 'estado ' + (data.solvente ? 'ok' : 'mal');
@@ -261,47 +313,12 @@
       if (r.ok) { $('pwd').value = ''; cargar(); } else alert(r.data.mensaje || 'Error');
     });
 
-    $('formEstudiante').addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const boton = $('formEstudiante').querySelector('button[type="submit"]');
-      const mensaje = $('mensajeRegistro');
-      boton.disabled = true;
-      mensaje.hidden = true;
-
-      try {
-        const r = await api('/admin/estudiantes', 'POST', {
-          cedula: $('nuevaCedula').value.trim(),
-          nombre: $('nuevoNombre').value.trim(),
-          apellido: $('nuevoApellido').value.trim(),
-          password: $('nuevaPassword').value
-        });
-
-        mensaje.hidden = false;
-        mensaje.textContent = r.data.mensaje || (r.ok
-          ? 'Estudiante registrado correctamente'
-          : 'No se pudo registrar el estudiante');
-        mensaje.className = 'estado ' + (r.ok ? 'ok' : 'mal');
-
-        if (r.ok) {
-          $('formEstudiante').reset();
-          $('nuevaCedula').focus();
-          await cargar();
-        }
-      } catch {
-        mensaje.hidden = false;
-        mensaje.textContent = 'Error de conexión. Inténtalo de nuevo.';
-        mensaje.className = 'estado mal';
-      } finally {
-        boton.disabled = false;
-      }
-    });
-
     $('formVerificar').addEventListener('submit', (e) => {
       e.preventDefault();
       verificar($('ced').value);
     });
 
+    $('filtro').addEventListener('input', pintarMorosos);
     $('btnRefrescar').onclick = cargar;
     $('btnSalir').onclick = async () => { detenerScan(); await api('/admin/logout', 'POST'); location.reload(); };
     cargar();
